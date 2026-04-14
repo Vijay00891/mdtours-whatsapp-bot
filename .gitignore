@@ -1,0 +1,22 @@
+# Environment variables — NEVER commit this
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cloudflare binary (large, not needed in repo)
+cloudflared.exe
+
+# IDE
+.vscode/
+.idea/
