@@ -1,5 +1,4 @@
 const mysql = require('mysql2/promise');
-require('dotenv').config();
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -19,7 +18,7 @@ pool.getConnection()
     conn.release();
   })
   .catch(err => {
-    console.error('MySQL connection failed:', err.message);
+    console.error('MySQL connection failed:', err);
     process.exit(1); // stop the server if DB is unreachable
   });
 
