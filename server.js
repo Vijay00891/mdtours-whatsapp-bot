@@ -15,13 +15,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── GET /webhook — Meta verification (no body parsing needed) ─────────────────
-app.get('/webhook', webhookRouter);
-
-// ─── POST /webhook — Incoming messages ────────────────────────────────────────
-// Raw buffer required so validateMetaSignature can compute HMAC correctly
+// ─── /webhook ──────────────────────────────────────────────────────────────────
+// GET  → Meta verification (no body, no signature check)
+// POST → Incoming messages (raw body needed for HMAC, then signature validated)
 app.use('/webhook', express.raw({ type: 'application/json' }));
-app.post('/webhook', validateMetaSignature, webhookRouter);
+app.use('/webhook', (req, res, next) => {
+  if (req.method === 'POST') {
+    return validateMetaSignature(req, res, next);
+  }
+  next();
+}, webhookRouter);
 
 // ─── Admin dashboard ───────────────────────────────────────────────────────────
 app.use('/admin', adminRouter);
