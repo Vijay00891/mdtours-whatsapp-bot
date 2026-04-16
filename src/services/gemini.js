@@ -6,7 +6,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGemini(history, retries = 2) {
   const apiKey = process.env.GEMINI_API_KEY;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const model = 'gemini-2.5-flash'; // confirmed available on this API key
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   // Gemini uses 'model' instead of 'assistant' for its role
   const contents = history.map(msg => ({
@@ -20,8 +21,8 @@ async function callGemini(history, retries = 2) {
     },
     contents,
     generationConfig: {
-      temperature: 0.3,      // low = more consistent, factual replies
-      maxOutputTokens: 300,  // keep replies short for WhatsApp
+      temperature: 0.3,
+      maxOutputTokens: 300,
       topP: 0.9
     }
   };
@@ -29,12 +30,17 @@ async function callGemini(history, retries = 2) {
   try {
     const response = await axios.post(url, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 15000  // 15 second timeout
+      timeout: 20000
     });
 
-    const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    // Extract text — handle both normal and thinking-mode responses
+    // Thinking models return multiple parts; the last text part is the actual reply
+    const parts = response.data?.candidates?.[0]?.content?.parts || [];
+    const textPart = parts.filter(p => p.text).pop(); // get last text part
+    const reply = textPart?.text?.trim();
 
     if (!reply) {
+      console.error('Gemini raw response:', JSON.stringify(response.data?.candidates?.[0]));
       throw new Error('Gemini returned empty response');
     }
 
@@ -42,6 +48,12 @@ async function callGemini(history, retries = 2) {
 
   } catch (err) {
     const status = err.response?.status;
+
+    // Log full Gemini error for debugging
+    const geminiError = err.response?.data?.error;
+    if (geminiError) {
+      console.error(`Gemini API error: ${status} — code: ${geminiError.code}, message: ${geminiError.message}`);
+    }
 
     // 429 = rate limited — wait and retry with exponential backoff
     if (status === 429 && retries > 0) {
