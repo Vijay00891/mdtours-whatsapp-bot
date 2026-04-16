@@ -35,4 +35,12 @@ async function saveSession(phone, contactName, history) {
   );
 }
 
-module.exports = { loadSession, saveSession };
+// Clear session — called when user sends a greeting to start fresh
+async function clearSession(phone) {
+  await db.query(
+    'DELETE FROM whatsapp_sessions WHERE phone = ?',
+    [phone]
+  );
+}
+
+module.exports = { loadSession, saveSession, clearSession };

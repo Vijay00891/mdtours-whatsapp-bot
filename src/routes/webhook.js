@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { loadSession, saveSession } = require('../services/session');
+const { loadSession, saveSession, clearSession } = require('../services/session');
 const { callGemini } = require('../services/gemini');
 const { sendMessage } = require('../services/whatsapp');
 const { extractAndSaveLead } = require('../services/lead');
@@ -19,6 +19,19 @@ function isDuplicate(id) {
     seenMessageIds.delete(first);
   }
   return false;
+}
+
+// Greeting detection — resets conversation so bot greets fresh
+// Covers English, Hindi, Marathi, Hinglish, Minglish
+const GREETING_PATTERNS = [
+  /^(hi|hey|hello|helo|hii|hiii|howdy|sup|yo|start|restart|reset|begin|new)$/i,  // English
+  /^(namaste|namaskar|kem cho|sat sri akal|salaam)$/i,                             // Indian greetings
+  /^(नमस्ते|नमस्कार|हैलो|हेलो)$/,                                                 // Hindi/Marathi script
+];
+
+function isGreeting(text) {
+  const trimmed = text.trim();
+  return GREETING_PATTERNS.some(pattern => pattern.test(trimmed));
 }
 
 // ─── GET: Meta webhook verification ───────────────────────────────────────────
@@ -69,11 +82,17 @@ router.post('/', async (req, res) => {
 
     logger.info('Incoming message', { phone, text: messageText });
 
-    // 1. Load existing conversation history from DB
+    // 1. If greeting — reset session so bot starts fresh
+    if (isGreeting(messageText)) {
+      await clearSession(phone);
+      logger.info('Session reset (greeting detected)', { phone });
+    }
+
+    // 2. Load existing conversation history from DB
     const { history, contactName: savedName } = await loadSession(phone);
     const name = savedName || contactName;
 
-    // 2. Append the new user message to history
+    // 3. Append the new user message to history
     history.push({ role: 'user', content: messageText });
 
     // 3. Call Gemini with full history
