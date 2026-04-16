@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const webhookRouter = require('./src/routes/webhook');
 const adminRouter = require('./src/routes/admin');
+const privacyRouter = require('./src/routes/privacy');
 const validateMetaSignature = require('./src/middleware/validateMeta');
 const logger = require('./src/config/logger');
 
@@ -28,6 +29,9 @@ app.use('/webhook', (req, res, next) => {
 
 // ─── Admin dashboard ───────────────────────────────────────────────────────────
 app.use('/admin', adminRouter);
+
+// ─── Privacy policy (required for Meta Live Mode) ──────────────────────────────
+app.use('/privacy', privacyRouter);
 
 // ─── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
